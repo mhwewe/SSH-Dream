@@ -4,6 +4,13 @@ A Bitvise-style SSH client for Windows, built with **Tauri v2**, **React** and *
 
 > **Status:** personal project, Windows only. Expect rough edges.
 
+## Screenshots
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/747a89cc-2004-4810-9aad-2de8832db4a3" alt="SSH Dream terminal tab" width="49%" />
+  <img src="https://github.com/user-attachments/assets/306ba419-280d-444b-9e5c-c67c94b78cb7" alt="SSH Dream SFTP file manager with bookmarks" width="49%" />
+</p>
+
 ## Features
 
 **Profiles & security**
@@ -45,6 +52,10 @@ A Bitvise-style SSH client for Windows, built with **Tauri v2**, **React** and *
 | SFTP | `Ctrl+Shift+N` | New folder |
 | SFTP | `Ctrl+L` | Type a path |
 | SFTP | `Alt+Left` / `Alt+Right` | Back / forward |
+
+## Download
+
+Grab the latest installer (`.exe` or `.msi`) from the [Releases](../../releases) page. The installers are not code-signed, so Windows SmartScreen may warn you: click **More info**, then **Run anyway**.
 
 ## Requirements
 
