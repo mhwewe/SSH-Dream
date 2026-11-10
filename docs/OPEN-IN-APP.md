@@ -2,7 +2,7 @@
 
 **What the user sees**
 - SFTP tab: double-click a file (or select it and press Enter, or right-click > *Open in default app*).
-- The file is downloaded to `%TEMP%\ssh-clone-edit\<uuid>\<same name>` and opened with the program Windows associates with it.
+- The file is downloaded to `%TEMP%\ssh-dream-edit\<uuid>\<same name>` and opened with the program Windows associates with it.
 - Edit and save in that program: every save is uploaded back to the SAME remote path ("Saved ... to the server" toast).
 - If the server copy changed meanwhile, a dialog asks: *Overwrite server copy* or *Keep server copy* (default / Esc = keep).
 

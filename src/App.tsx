@@ -2,7 +2,7 @@
 // App.tsx — layout shell: header (title + ProfileSwitcher), ActionBar, tab strip + tab panel,
 // LogPane (the Log in / Log out button lives in the left ActionBar), plus global Toasts and Dialogs.
 // On start: subscribes to backend events once and loads profiles (store/profiles.ts init).
-// Window title = "<profile name>[*] - SSH Clone" (asterisk = unsaved changes).
+// Window title = "<profile name>[*] - SSH Dream" (asterisk = unsaved changes).
 // Also here (polish): global keyboard shortcuts, the "unsaved changes / running transfers" guard when the window is
 // closed, and the cancelling of browser-only keys (F5 / Ctrl+R reload, page zoom, F7 caret browsing) that would wreck
 // the UI state while the SSH sessions keep running in the backend.
@@ -168,7 +168,7 @@ export default function App() {
         unsaved ? "The current profile has unsaved changes." : "",
         live ? `${live} transfer${live === 1 ? " is" : "s are"} still running and will be stopped.` : "",
       ].filter(Boolean).join(" ");
-      const pick = await dialogs.choose("Exit SSH Clone?", why, unsaved ? ["Save and exit", "Exit without saving", "Cancel"] : ["Exit", "Cancel"]);
+      const pick = await dialogs.choose("Exit SSH Dream?", why, unsaved ? ["Save and exit", "Exit without saving", "Cancel"] : ["Exit", "Cancel"]);
       if (pick === "Cancel") return;
       if (pick === "Save and exit" && !(await useProfiles.getState().saveDraft())) return; // stay open when saving failed
       await w.destroy(); // destroy() skips this handler (close() would ask again)
@@ -177,7 +177,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const t = `${draft?.name ?? "SSH Clone"}${dirty ? "*" : ""} - SSH Clone`;
+    const t = `${draft?.name ?? "SSH Dream"}${dirty ? "*" : ""} - SSH Dream`;
     document.title = t;
     void getCurrentWindow().setTitle(t).catch(() => {});
   }, [draft?.name, dirty]);

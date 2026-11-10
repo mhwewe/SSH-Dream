@@ -76,7 +76,7 @@ pub fn transfer_resolve(app: AppHandle, transfer_id: String, action: Action, app
 /// (left by earlier runs) are removed first, best effort.
 #[tauri::command]
 pub fn drag_cache_dir() -> Result<String, String> {
-    let root = std::env::temp_dir().join("ssh-clone-drag");
+    let root = std::env::temp_dir().join("ssh-dream-drag");
     if let Ok(rd) = std::fs::read_dir(&root) {
         for e in rd.flatten() {
             let old = e

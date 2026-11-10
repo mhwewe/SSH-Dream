@@ -1,4 +1,4 @@
-# SSH Clone
+# SSH Dream
 
 A Bitvise-style SSH client for Windows, built with **Tauri v2**, **React** and **Rust**. One window gives you a terminal, a full SFTP file manager and an RDP launcher for every saved server.
 
@@ -59,8 +59,8 @@ See the [Tauri prerequisites guide](https://tauri.app/start/prerequisites/) if a
 ## Getting started
 
 ```powershell
-git clone <your-repo-url> ssh-clone
-cd ssh-clone
+git clone <your-repo-url> ssh-dream
+cd ssh-dream
 npm install
 npm run tauri dev
 ```

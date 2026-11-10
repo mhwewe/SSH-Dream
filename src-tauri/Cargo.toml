@@ -1,13 +1,13 @@
-# Rust backend of SSH Clone (Tauri v2). Built with `npm run tauri build` from the repo root.
+# Rust backend of SSH Dream (Tauri v2). Built with `npm run tauri build` from the repo root.
 
 [package]
-name = "ssh-clone"
+name = "ssh-dream"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-# The lib/bin split is the standard Tauri v2 layout: main.rs only calls ssh_clone_lib::run().
-name = "ssh_clone_lib"
+# The lib/bin split is the standard Tauri v2 layout: main.rs only calls ssh_dream_lib::run().
+name = "ssh_dream_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

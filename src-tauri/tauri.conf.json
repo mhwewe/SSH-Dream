@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "SSH Clone",
+  "productName": "SSH Dream",
   "version": "0.1.0",
   "identifier": "com.sshclone.app",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "SSH Clone",
+        "title": "SSH Dream",
         "width": 960,
         "height": 780,
         "minWidth": 760,
@@ -48,7 +48,7 @@
         "installMode": "currentUser"
       }
     },
-    "publisher": "SSH Clone",
+    "publisher": "SSH Dream",
     "shortDescription": "Bitvise-style SSH client: terminal, SFTP, RDP",
     "category": "Utility"
   }

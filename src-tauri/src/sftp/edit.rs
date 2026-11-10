@@ -6,7 +6,7 @@
 //!                `tauri-plugin-opener` (open the local copy in the default app), `notify` (file watcher).
 //!
 //! HOW IT WORKS (one "edit session" per remote file)
-//!  1. The remote file is downloaded to  %TEMP%\ssh-clone-edit\<uuid>\<same file name>  (the name keeps its
+//!  1. The remote file is downloaded to  %TEMP%\ssh-dream-edit\<uuid>\<same file name>  (the name keeps its
 //!     extension, so Windows picks the right program).
 //!  2. A `notify` watcher is started on that temp folder BEFORE the program is launched (no save can be missed).
 //!  3. The local copy is opened with the default app (`tauri-plugin-opener`, called from Rust: no JS permission needed).
@@ -173,7 +173,7 @@ pub async fn open(app: &AppHandle, sftp_id: &str, remote_path: &str, chan: Chann
         ));
     }
 
-    // Local copy: %TEMP%\ssh-clone-edit\<uuid>\<name>
+    // Local copy: %TEMP%\ssh-dream-edit\<uuid>\<name>
     let root = edit_root();
     let active_dirs: HashSet<PathBuf> =
         lock(&mgr.sessions).values().filter_map(|c| c.local_path.parent().map(Path::to_path_buf)).collect();
@@ -528,7 +528,7 @@ fn open_default(app: &AppHandle, path: &Path) -> SshResult<()> {
 // ---------------------------------------------------------------------------------------------
 
 fn edit_root() -> PathBuf {
-    std::env::temp_dir().join("ssh-clone-edit")
+    std::env::temp_dir().join("ssh-dream-edit")
 }
 
 /// Remove edit folders older than KEEP_DAYS (best effort; folders of active sessions are never touched).
