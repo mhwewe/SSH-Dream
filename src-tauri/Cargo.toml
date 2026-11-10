@@ -1,0 +1,41 @@
+# =============================================================================
+# Cargo.toml — Rust backend of "ssh-clone" (Tauri v2)
+# AI READER NOTE: versions below are semver RANGES because the author had no network.
+# At first build run `cargo update`, then copy the exact versions from Cargo.lock into
+# HANDOFF-LOG.md ("Pinned versions"). Handoff 2 adds russh; Handoff 3 adds russh-sftp.
+# =============================================================================
+[package]
+name = "ssh-clone"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# The lib/bin split is the standard Tauri v2 layout: main.rs only calls ssh_clone_lib::run().
+name = "ssh_clone_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"          # native open/save dialogs (key picker, export/import)
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"                     # ISO-8601 timestamps
+# keyring v3 needs the platform feature enabled explicitly, otherwise it silently uses a mock store!
+keyring = { version = "3", features = ["windows-native"] }
+# H2 needs "net"; H3 needs "fs" + "io-util" (local files, AsyncRead/AsyncWrite helpers).
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "fs", "io-util"] }
+# --- Handoff 2: SSH client (API follows russh 0.65.x examples; re-check if you pin another version) ---
+russh = "0.65"
+# --- Handoff 3: SFTP client that pairs with russh (we only use its client API) + CancellationToken ---
+russh-sftp = "2"
+tokio-util = "0.7"
+
+[target.'cfg(windows)'.dependencies]
+# Microsoft's official crate. Used ONLY for CredWriteW (rdp.rs) so the RDP password never
+# appears on a command line. If you bump this version, re-check CREDENTIALW field names.
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Security_Credentials"] }

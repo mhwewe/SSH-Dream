@@ -1,0 +1,34 @@
+/* ssh.css — styles for the Handoff-2 pieces (terminal tab + dialogs).
+   Import once in main.tsx:  import "./ssh.css";
+   Colors are plain values so they work next to whatever theme Handoff 1 made; adjust freely. */
+
+/* ---- Terminal tab ---- */
+.term-tab { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.term-strip { display: flex; align-items: center; gap: 2px; padding: 2px 4px; background: #e9e9ee; border-bottom: 1px solid #c8c8d0; }
+.term-subtab { display: flex; align-items: center; gap: 6px; padding: 3px 8px; cursor: pointer; border: 1px solid transparent; border-radius: 3px 3px 0 0; }
+.term-subtab.is-active { background: #fff; border-color: #c8c8d0; }
+.term-subtab.is-closed span { opacity: 0.55; text-decoration: line-through; }
+.term-x, .term-plus { border: none; background: transparent; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px; }
+.term-plus:disabled { opacity: 0.4; cursor: default; }
+.term-viewport { position: relative; flex: 1; min-height: 0; background: #0c0c0c; }
+.term-pane { position: absolute; inset: 0; padding: 4px; box-sizing: border-box; }
+.term-host { width: 100%; height: 100%; }
+.term-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #ddd; }
+
+/* ---- Dialogs ---- */
+.dlg-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
+.dlg { width: min(460px, 92vw); padding: 16px 18px; border-radius: 6px; background: #fff; color: #1b1b1f; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; gap: 10px; }
+.dlg h2 { margin: 0; font-size: 16px; }
+.dlg p { margin: 0; }
+.dlg input[type="password"] { padding: 6px 8px; font-size: 14px; }
+.dlg-check { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.dlg-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.dlg-kv dt { font-weight: 600; }
+.dlg-kv dd { margin: 0; word-break: break-all; }
+.dlg .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+.dlg-danger { padding: 8px 10px; border-radius: 4px; background: #c62828; color: #fff; font-weight: 600; }
+.dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.dlg-buttons button { padding: 6px 12px; cursor: pointer; }
+.dlg-buttons .primary { background: #2563eb; color: #fff; border: 1px solid #1d4ed8; }
+.dlg-buttons .danger { background: #c62828; color: #fff; border: 1px solid #8e0000; }
+.dlg-buttons button:disabled { opacity: 0.5; cursor: default; }

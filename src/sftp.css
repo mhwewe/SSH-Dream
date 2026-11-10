@@ -1,0 +1,87 @@
+/* sftp.css — styles for the Handoff-3 pieces (SFTP tab, file table, transfer queue).
+   Imported once in main.tsx. Colours follow styles.css (blue #2f6db5, grey borders). */
+
+.tabpanel.flush { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.tabpanel.flush > .panel-fill { flex: 1; min-height: 0; }
+
+.sftp { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.sftp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; color: #555; }
+.sftp-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; background: #eef3f9; border-bottom: 1px solid #cfe0f3; }
+.sftp-sep { width: 1px; background: #b8c7d9; margin: 0 4px; }
+.sftp-pathbar { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid #ddd; }
+.sftp-pathbar input { flex: 1; font-family: Consolas, monospace; }
+.sftp-loading { color: #777; }
+.sftp-files { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sftp-files.drop-hot { outline: 2px dashed #2f6db5; outline-offset: -3px; background: #f3f8fe; }
+.sftp-drop-hint { position: absolute; left: 0; right: 0; bottom: 8px; margin: 0 auto; width: fit-content; padding: 6px 12px; background: #2f6db5; color: #fff; border-radius: 3px; pointer-events: none; }
+
+/* file table */
+.ft { display: flex; flex-direction: column; flex: 1; min-height: 0; outline: none; user-select: none; }
+.ft-row { display: grid; grid-template-columns: minmax(160px, 1fr) 90px 140px 100px; align-items: center; }
+.ft-head { background: #f4f4f4; border-bottom: 1px solid #ccc; font-weight: 600; }
+.ft-th { cursor: pointer; padding: 3px 6px; }
+.ft-th:hover { background: #dcebfa; }
+.ft-scroll { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.ft-body { cursor: default; }
+.ft-body:hover { background: #f1f7fd; }
+.ft-body.is-sel { background: #cfe3f8; }
+.ft:focus-within .ft-body.is-sel { background: #b9d6f4; }
+.ft-cell { padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ft-size { text-align: right; }
+.ft-permissions { font-family: Consolas, monospace; font-size: 11px; color: #555; }
+.ft-empty { padding: 16px; color: #777; text-align: center; }
+
+/* transfer queue */
+.tq { border-top: 1px solid #ccc; background: #fafafa; display: flex; flex-direction: column; max-height: 190px; }
+.tq-head { display: flex; justify-content: space-between; align-items: center; padding: 3px 8px; background: #eef3f9; color: #2f6db5; font-weight: 600; cursor: pointer; }
+.tq-head button { padding: 0 8px; }
+.tq-body { overflow: auto; }
+.tq-empty { padding: 8px; color: #777; }
+.tq-row { display: grid; grid-template-columns: 20px minmax(80px, 1fr) 130px 130px 70px 110px; gap: 6px; align-items: center; padding: 2px 8px; border-bottom: 1px solid #eee; }
+.tq-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tq-bar { height: 8px; background: #ddd; border-radius: 4px; overflow: hidden; }
+.tq-fill { display: block; height: 100%; background: #2f6db5; }
+.tq-done .tq-fill { background: #2e9d44; }
+.tq-error .tq-fill { background: #d32f2f; }
+.tq-cancelled .tq-fill { background: #9e9e9e; }
+.tq-error .tq-state { color: #c62828; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tq-bytes, .tq-speed { font-size: 11px; color: #555; text-align: right; white-space: nowrap; }
+.tq-state button { padding: 0 8px; }
+
+/* The Terminal and SFTP wrappers fill the flush tab panel; their children use height:100%. */
+.tabpanel.flush > .panel-fill { position: relative; }
+
+/* ---- toolbar: back / forward ---- */
+.sftp-nav { padding: 4px 8px; min-width: 28px; }
+.sftp-toggle.on { background: #cfe3f8; border-color: #5a9bd5; }
+
+/* ---- path bar: bookmark star ---- */
+.sftp-star { padding: 0 6px; font-size: 15px; line-height: 20px; background: transparent; border-color: transparent; color: #8a8a8a; }
+.sftp-star.on { color: #e0a100; }
+.sftp-star:hover:not(:disabled) { background: #fff6d6; border-color: #e0c060; }
+
+/* ---- bookmarks panel (left of the file list) ---- */
+.sftp-split { flex: 1; min-height: 0; display: flex; }
+.sftp-split > .sftp-files { flex: 1; min-width: 0; }
+.sftp-bm { flex: none; width: 190px; /* overridden by the drag size */ display: flex; flex-direction: column; border-right: 1px solid #ccc; background: #fafcff; min-height: 0; }
+.sftp-bm-head { padding: 3px 8px; background: #eef3f9; color: #2f6db5; font-weight: 600; border-bottom: 1px solid #cfe0f3; }
+.sftp-bm-list { flex: 1; overflow: auto; }
+.sftp-bm-empty { padding: 8px; color: #777; }
+.sftp-bm-item { display: flex; align-items: center; gap: 2px; padding: 2px 4px 2px 8px; cursor: pointer; }
+.sftp-bm-item:hover { background: #dcebfa; }
+.sftp-bm-item.active { background: #cfe3f8; font-weight: 600; }
+.sftp-bm-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sftp-bm-act { padding: 0 5px; line-height: 16px; border-color: transparent; background: transparent; color: #777; visibility: hidden; }
+.sftp-bm-item:hover .sftp-bm-act, .sftp-bm-item:focus-within .sftp-bm-act { visibility: visible; }
+.sftp-bm-act:hover:not(:disabled) { color: #c62828; }
+
+/* ---- drag & drop: moving remote items / Explorer drops onto a folder ---- */
+.ft-body.is-drop, body.ft-dragging .ft-body[data-ft-dir]:hover { background: #bcd9f7; outline: 1px dashed #2f6db5; outline-offset: -1px; }
+body.ft-dragging, body.ft-dragging * { cursor: grabbing !important; }
+body.ft-dragging button[data-ft-dir]:hover, body.ft-dragging .sftp-bm-item[data-ft-dir]:hover { background: #bcd9f7; outline: 1px dashed #2f6db5; }
+.sftp-files.drop-hot:has(.is-drop) { background: transparent; }
+.ft-ghost { position: fixed; z-index: 1000; pointer-events: none; padding: 2px 8px; background: #2f6db5; color: #fff; border-radius: 3px; font-size: 12px; opacity: .9; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* inline rename / new folder */
+.ft-inline { display: flex; align-items: center; gap: 4px; }
+.ft-edit { flex: 1; min-width: 0; height: 18px; padding: 0 3px; font: inherit; border: 1px solid #2f6db5; outline: none; }

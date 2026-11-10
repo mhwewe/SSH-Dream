@@ -1,0 +1,14 @@
+# Add these to [dependencies] in src-tauri/Cargo.toml (keep any version Handoff 1 already pinned).
+# Pin to the latest stable at build time and record the versions in HANDOFF-LOG.md.
+
+russh = "0.65"                       # latest I could confirm on docs.rs (0.65.1). API = that version's examples.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
+uuid = { version = "1", features = ["v4"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+keyring = "3"                        # Handoff 1 already uses it; on Windows make sure the
+                                     # "windows-native" feature is enabled (keyring 3 needs a backend feature).
+
+# If the Windows build of russh complains about a C toolchain (cmake/nasm), see russh's feature
+# list on docs.rs and choose its pure-Rust crypto backend instead of the default.

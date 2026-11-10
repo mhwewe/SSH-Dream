@@ -1,0 +1,81 @@
+/* styles.css — compact Bitvise-like look: Segoe UI 12px, blue headings, white inputs.
+   Layout fidelity matters more than pixel perfection (Handoff 1 §5 step 7). */
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { font: 12px "Segoe UI", sans-serif; background: #f0f0f0; color: #111; }
+button { font: inherit; padding: 4px 10px; border: 1px solid #adadad; background: #e8e8e8; cursor: pointer; border-radius: 2px; }
+button:hover:not(:disabled) { background: #dcebfa; border-color: #5a9bd5; }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: #2f6db5; color: #fff; border-color: #245a97; }
+input, select { font: inherit; padding: 3px 5px; border: 1px solid #adadad; background: #fff; min-width: 0; }
+input:disabled { background: #eee; }
+hr { border: 0; border-top: 1px solid #ccc; margin: 6px 0; width: 100%; }
+
+.app { display: flex; flex-direction: column; height: 100%; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 6px 8px; background: #fff; border-bottom: 1px solid #ccc; }
+.apptitle { font-weight: 600; color: #2f6db5; }
+.body { display: flex; flex: 1; min-height: 0; }
+/* Left bar: small SQUARE icon buttons. Change --ab-size to make them bigger/smaller. */
+.actionbar { --ab-size: 38px; flex: none; width: calc(var(--ab-size) + 16px); padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; border-right: 1px solid #ccc; }
+.actionbar hr { width: 60%; }
+.ab-btn { width: var(--ab-size); height: var(--ab-size); padding: 0; display: flex; align-items: center; justify-content: center; color: #2f4f7a; }
+.ab-btn:hover:not(:disabled) { color: #1d4f91; }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tabs { display: flex; gap: 2px; padding: 6px 8px 0; }
+.tab { border-bottom: none; border-radius: 3px 3px 0 0; background: #e0e0e0; }
+.tab.active { background: #fff; font-weight: 600; }
+.tabpanel { flex: 1; overflow: auto; background: #fff; margin: 0 8px; border: 1px solid #ccc; padding: 10px; }
+.placeholder { color: #777; padding: 20px; }
+
+.form { display: flex; flex-direction: column; gap: 6px; max-width: 460px; }
+.form h4 { margin: 8px 0 2px; color: #2f6db5; border-bottom: 1px solid #cfe0f3; padding-bottom: 2px; }
+.form label { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 8px; }
+.form label.check { display: flex; gap: 6px; }
+.row { display: flex; gap: 4px; }
+.row input { flex: 1; }
+
+.bottom-buttons { display: flex; gap: 8px; padding: 8px; justify-content: flex-end; }
+.logpane { flex: none; margin: 0 8px 8px; border: 1px solid #ccc; background: #fff; display: flex; flex-direction: column; }
+.logpane-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px; background: #eef3f9; color: #2f6db5; font-weight: 600; }
+.logpane-head button { padding: 0 8px; }
+.logpane-body { flex: 1; overflow: auto; font: 11px Consolas, monospace; padding: 2px 6px; }
+.logline { display: flex; gap: 8px; white-space: pre-wrap; }
+.log-ts { color: #777; }
+.log-warn { color: #9a6700; } .log-error { color: #c62828; }
+
+.switcher { position: relative; }
+.switcher-btn { display: flex; align-items: center; gap: 6px; min-width: 200px; }
+.switcher-menu { position: absolute; z-index: 20; top: 100%; left: 0; min-width: 240px; background: #fff; border: 1px solid #999; box-shadow: 0 4px 12px rgba(0,0,0,.2); padding: 4px 0; }
+.switcher-item { padding: 5px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.switcher-item:hover { background: #dcebfa; } .switcher-item.active { font-weight: 600; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: #9e9e9e; }
+.dot-connecting { background: #f5a623; } .dot-connected { background: #2e9d44; } .dot-error { background: #d32f2f; }
+
+.toasts { position: fixed; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 50; }
+.toast { padding: 8px 12px; background: #333; color: #fff; border-radius: 3px; max-width: 320px; cursor: pointer; }
+.toast-error { background: #b3261e; } .toast-success { background: #2e7d32; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: #fff; padding: 14px; min-width: 320px; border: 1px solid #888; display: flex; flex-direction: column; gap: 10px; }
+.modal h3 { margin: 0; color: #2f6db5; font-size: 13px; }
+.modal p { margin: 0; }
+.modal-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* form helpers (RDP tab) */
+.form-hint { margin: 0; color: #666; font-size: 11px; line-height: 1.4; }
+.form-error { color: #c62828; }
+input.invalid { border-color: #c62828; background: #fff4f4; }
+
+/* ---- splitters (drag handles) ---- */
+.splitter-x { flex: none; width: 5px; margin: 0 -2px; cursor: col-resize; position: relative; z-index: 5; }
+.splitter-y { flex: none; height: 5px; margin: -2px 8px; cursor: row-resize; position: relative; z-index: 5; }
+.splitter-x:hover, .splitter-y:hover { background: #9ec3ea; }
+body.resizing-x, body.resizing-x * { cursor: col-resize !important; user-select: none; }
+body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select: none; }
+
+/* ---- session button in the left bar ---- */
+.ab-session { height: auto; min-height: var(--ab-size); flex-direction: column; gap: 1px; padding: 3px 0; font-size: 9px; line-height: 1.1; }
+.ab-session.is-in { background: #2f6db5; color: #fff; border-color: #245a97; }
+.ab-session.is-in:hover:not(:disabled) { background: #245a97; color: #fff; }
+.main { padding-bottom: 4px; }
