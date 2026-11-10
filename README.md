@@ -1,5 +1,5 @@
 # SSH Dream
-
+Everything is made with AI, even the readme.
 A Bitvise-style SSH client for Windows, built with **Tauri v2**, **React** and **Rust**. One window gives you a terminal, a full SFTP file manager and an RDP launcher for every saved server.
 
 > **Status:** personal project, Windows only. Expect rough edges.
