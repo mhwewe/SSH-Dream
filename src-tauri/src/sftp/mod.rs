@@ -27,6 +27,9 @@ use tokio::sync::Semaphore;
 
 use crate::ssh::{emit_log, lock};
 
+pub mod dragout;   // drag remote items OUT into Windows Explorer (virtual files, no temp files)
+pub mod dragprogress; // progress bookkeeping of those drags (rows of the Transfers list; pure std, unit-tested)
+pub mod edit;      // open a remote file in the default Windows app, upload every save back (notify + tauri-plugin-opener)
 pub mod remote;
 pub mod transfer;
 
@@ -88,6 +91,7 @@ pub async fn close_session(app: &AppHandle, session_id: &str) {
     // 2. Abort their transfers.
     for (sftp_id, _) in &removed {
         transfer::abort_for_sftp(app, sftp_id, "The connection was closed during the transfer.");
+        edit::abort_for_sftp(app, sftp_id, "The connection was closed."); // "Open in default app" sessions
     }
 
     // 3. Best-effort close (the connection is going away anyway, so keep it short).

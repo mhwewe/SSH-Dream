@@ -3,15 +3,21 @@
 // LogPane (the Log in / Log out button lives in the left ActionBar), plus global Toasts and Dialogs.
 // On start: subscribes to backend events once and loads profiles (store/profiles.ts init).
 // Window title = "<profile name>[*] - SSH Clone" (asterisk = unsaved changes).
+// Also here (polish): global keyboard shortcuts, the "unsaved changes / running transfers" guard when the window is
+// closed, and the cancelling of browser-only keys (F5 / Ctrl+R reload, page zoom, F7 caret browsing) that would wreck
+// the UI state while the SSH sessions keep running in the backend.
+//   Ctrl+1..4 tabs (Login, Terminal, SFTP, RDP) · Ctrl+, Options (the cogwheel, top right) · Ctrl+S save profile · Ctrl+Enter log in · Ctrl+Shift+T new terminal
 // =============================================================================
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useProfiles } from "./store/profiles";
 import { useSessions } from "./store/sessions";
 import { useSftp } from "./store/sftp";
 import { initLogListener } from "./store/logs";
 import { profileSave } from "./api/profiles";
-import { ActionBar } from "./components/ActionBar";
+import { ActionBar, logInActive } from "./components/ActionBar";
+import { dialogs } from "./store/dialogs";
+import { toast } from "./store/toasts";
 import { ProfileSwitcher } from "./components/ProfileSwitcher";
 import { LogPane } from "./components/LogPane";
 import { Toasts } from "./components/Toasts";
@@ -23,16 +29,28 @@ import { LoginTab } from "./tabs/LoginTab";
 import { OptionsTab } from "./tabs/OptionsTab";
 import TerminalTab from "./tabs/TerminalTab"; // H2: default export
 import { RdpTab } from "./tabs/RdpTab";
+import { IconCog } from "./components/icons";
 import { SftpTab } from "./tabs/SftpTab";
 
 export type TabId = "login" | "options" | "terminal" | "rdp" | "sftp";
-const TABS: { id: TabId; label: string }[] = [
-  { id: "login", label: "Login" }, { id: "terminal", label: "Terminal" }, { id: "sftp", label: "SFTP" },
-  { id: "options", label: "Options" }, { id: "rdp", label: "RDP" },
+// The tab strip. "options" is NOT in it: it has its own cogwheel button in the top right corner (see the header below).
+const TABS: { id: Exclude<TabId, "options">; label: string }[] = [
+  { id: "login", label: "Login" }, { id: "terminal", label: "Terminal" }, { id: "sftp", label: "SFTP" }, { id: "rdp", label: "RDP" },
 ];
+
+/** True when the key event comes from inside a terminal (it has its own zoom / copy / paste rules). */
+const inTerminal = (t: EventTarget | null) => t instanceof Element && !!t.closest(".term-host");
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("login");
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  // The tab that was open before Options, so the cogwheel (or Ctrl+,) toggles back to it.
+  const beforeOptions = useRef<TabId>("login");
+  const toggleOptions = useCallback(() => {
+    if (tabRef.current === "options") setTab(beforeOptions.current);
+    else { beforeOptions.current = tabRef.current; setTab("options"); }
+  }, []);
   const draft = useProfiles((s) => s.draft);
   const loaded = useProfiles((s) => s.loaded);
   const dirty = useProfiles((s) => s.isDirty());
@@ -94,25 +112,111 @@ export default function App() {
     })();
   }, [loaded]);
 
+  // ---- global keyboard shortcuts ---------------------------------------------------------------
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
+      // Keys that only make sense in a browser: the app is a UI over live sessions, a reload would lose its state.
+      if (e.key === "F7" || (e.ctrlKey && (k === "r" || k === "p" || k === "u" || k === "j")) || (e.key === "F5" && !e.defaultPrevented)) {
+        e.preventDefault();
+        // F5 on the SFTP tab = refresh the folder (the file list does this itself when it has the focus).
+        if (e.key === "F5" && tabRef.current === "sftp") { const id = useProfiles.getState().activeId; if (id) void useSftp.getState().refresh(id); }
+        return;
+      }
+      // Page zoom (Ctrl + / - / 0). Terminals zoom their own font instead.
+      if (e.ctrlKey && !e.altKey && ["+", "=", "-", "_", "0"].includes(e.key)) { e.preventDefault(); return; }
+
+      if (e.ctrlKey && !e.altKey && !e.shiftKey && /^[1-4]$/.test(e.key)) {
+        e.preventDefault();
+        setTab(TABS[Number(e.key) - 1].id);
+      } else if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key === ",") {
+        e.preventDefault(); // Ctrl+, = Options (the usual settings shortcut)
+        toggleOptions();
+      } else if (e.ctrlKey && !e.altKey && !e.shiftKey && k === "s" && !inTerminal(e.target)) {
+        e.preventDefault(); // (Ctrl+S in a terminal is XOFF: left alone)
+        void useProfiles.getState().saveDraft().then((p) => { if (p) toast(`Saved "${p.name}"`, "success"); });
+      } else if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key === "Enter" && !inTerminal(e.target) && !(typing && tabRef.current === "sftp")) {
+        const id = useProfiles.getState().activeId;
+        const st = id ? useSessions.getState().byProfile[id]?.state : undefined;
+        if (st !== "connected" && st !== "connecting") { e.preventDefault(); void logInActive(); }
+      } else if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === "KeyT") {
+        e.preventDefault();
+        setTab("terminal");
+        const { profiles, activeId } = useProfiles.getState();
+        const p = profiles.find((x) => x.id === activeId);
+        if (p && !useSessions.getState().openTerminal(p)) toast("Log in first to open a terminal", "error");
+      }
+    };
+    const onWheel = (e: WheelEvent) => { if (e.ctrlKey && !inTerminal(e.target)) e.preventDefault(); };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("wheel", onWheel); };
+  }, [toggleOptions]);
+
+  // ---- closing the window: do not lose unsaved edits or running transfers by accident --------------
+  useEffect(() => {
+    let un: (() => void) | undefined;
+    let gone = false;
+    const w = getCurrentWindow();
+    void w.onCloseRequested(async (event) => {
+      const unsaved = useProfiles.getState().isDirty();
+      const live = useSftp.getState().transfers.filter((t) => t.state === "queued" || t.state === "running").length;
+      if (!unsaved && !live) return; // nothing at risk: the window just closes
+      event.preventDefault();
+      const why = [
+        unsaved ? "The current profile has unsaved changes." : "",
+        live ? `${live} transfer${live === 1 ? " is" : "s are"} still running and will be stopped.` : "",
+      ].filter(Boolean).join(" ");
+      const pick = await dialogs.choose("Exit SSH Clone?", why, unsaved ? ["Save and exit", "Exit without saving", "Cancel"] : ["Exit", "Cancel"]);
+      if (pick === "Cancel") return;
+      if (pick === "Save and exit" && !(await useProfiles.getState().saveDraft())) return; // stay open when saving failed
+      await w.destroy(); // destroy() skips this handler (close() would ask again)
+    }).then((f) => { if (gone) f(); else un = f; }).catch(() => { /* not fatal: the window closes without the check */ });
+    return () => { gone = true; un?.(); };
+  }, []);
+
   useEffect(() => {
     const t = `${draft?.name ?? "SSH Clone"}${dirty ? "*" : ""} - SSH Clone`;
     document.title = t;
     void getCurrentWindow().setTitle(t).catch(() => {});
   }, [draft?.name, dirty]);
 
+  // Arrow keys move between the tabs (roving tabindex).
+  const onTabsKey = useCallback((e: ReactKeyboardEvent) => {
+    const i = TABS.findIndex((t) => t.id === tabRef.current);
+    const go = (n: number) => {
+      e.preventDefault();
+      const next = TABS[(n + TABS.length) % TABS.length].id;
+      setTab(next);
+      requestAnimationFrame(() => document.getElementById(`tab-${next}`)?.focus());
+    };
+    // i === -1 while Options is open (no tab of the strip is selected): Right -> first tab, Left -> last tab.
+    if (e.key === "ArrowRight") go(i < 0 ? 0 : i + 1);
+    else if (e.key === "ArrowLeft") go(i < 0 ? TABS.length - 1 : i - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(TABS.length - 1);
+  }, []);
+
   return (
     <div className="app">
-      <header className="topbar"><span className="apptitle">SSH Clone</span><ProfileSwitcher /></header>
+      <header className="topbar">
+        <ProfileSwitcher />
+        <nav className="tabs" role="tablist" aria-label="Sections" onKeyDown={onTabsKey}>
+          {TABS.map((t, i) => (
+            <button key={t.id} role="tab" id={`tab-${t.id}`} aria-selected={tab === t.id} aria-controls="main-panel" tabIndex={tab === t.id || (tab === "options" && i === 0) ? 0 : -1}
+              className={tab === t.id ? "tab active" : "tab"} title={`${t.label} (Ctrl+${i + 1})`} onClick={() => setTab(t.id)}>{t.label}</button>
+          ))}
+        </nav>
+        {/* Options cogwheel, top right. It also labels the panel while Options is open (aria-labelledby="tab-options"). */}
+        <button id="tab-options" className="settings-btn" title="Options (Ctrl+,)" aria-label="Options" aria-pressed={tab === "options"}
+          aria-controls="main-panel" onClick={toggleOptions}><IconCog size={18} /></button>
+      </header>
       <div className="body">
         <ActionBar onTab={setTab} />
         <main className="main">
-          <nav className="tabs">
-            {TABS.map((t) => (
-              <button key={t.id} className={tab === t.id ? "tab active" : "tab"} onClick={() => setTab(t.id)}>{t.label}</button>
-            ))}
-          </nav>
-          <section className={tab === "terminal" || tab === "sftp" ? "tabpanel flush" : "tabpanel"}>
-            {!loaded || !draft ? <div className="placeholder">Loading…</div> : (
+          <section id="main-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className={tab === "terminal" || tab === "sftp" ? "tabpanel flush" : "tabpanel"}>
+            {!loaded || !draft ? <div className="placeholder" role="status">Loading…</div> : (
               <>
                 {tab === "login" && <LoginTab />}
                 {tab === "options" && <OptionsTab />}

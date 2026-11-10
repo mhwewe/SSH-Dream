@@ -16,8 +16,9 @@
         "title": "SSH Clone",
         "width": 960,
         "height": 780,
-        "minWidth": 700,
+        "minWidth": 760,
         "minHeight": 600,
+        "center": true,
         "dragDropEnabled": true
       }
     ],

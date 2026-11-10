@@ -21,12 +21,18 @@ pub fn run() {
     tauri::Builder::default()
         // Native file dialogs. Permission is granted in capabilities/default.json.
         .plugin(tauri_plugin_dialog::init())
+        // Native drag of files from the window into Explorer (SFTP "drag out"). Permission: "drag:default".
+        .plugin(tauri_plugin_drag::init())
+        // Opens a file with the program Windows associates with it (used from Rust by sftp/edit.rs; no JS permission needed).
+        .plugin(tauri_plugin_opener::init())
         // Shared state (sessions map is empty in Handoff 1; Handoff 2 fills it).
         .manage(state::AppState::default())
         // H2: live SSH sessions / terminals / pending host-key prompts.
         .manage(ssh::SshManager::default())
         // H3: SFTP handles + transfer jobs (concurrency limit lives inside).
         .manage(sftp::SftpManager::new())
+        // "Open in default app" sessions (sftp/edit.rs): one per remote file being edited.
+        .manage(sftp::edit::EditManager::default())
         .invoke_handler(tauri::generate_handler![
             // ---- Profiles (H1) ----
             commands::profiles::profile_list,
@@ -65,6 +71,11 @@ pub fn run() {
             commands::sftp_cmds::transfer_start,
             commands::sftp_cmds::transfer_cancel,
             commands::sftp_cmds::transfer_resolve,
+            commands::sftp_cmds::drag_cache_dir,        // legacy temp-file drag (fallback)
+            commands::sftp_cmds::sftp_drag_plan,        // virtual-file drag, step 1 (see sftp/dragout.rs)
+            commands::sftp_cmds::sftp_drag_start,       // virtual-file drag, step 2
+            commands::sftp_cmds::sftp_edit_open,        // open in default app + upload saves back (sftp/edit.rs)
+            commands::sftp_cmds::sftp_edit_resolve,     // answer to "the server copy changed"
             // ---- SFTP memory: last folder + bookmarks ----
             commands::prefs::sftp_prefs_get,
             commands::prefs::sftp_prefs_set,

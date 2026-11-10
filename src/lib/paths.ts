@@ -45,6 +45,16 @@ export function formatSpeed(bytesPerSec: number): string {
   return bytesPerSec > 0 ? `${formatBytes(bytesPerSec)}/s` : "";
 }
 
+/** Seconds left -> "0:42", "12:05", "1:02:05". Empty when unknown or absurd (more than a day). */
+export function formatEta(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0 || seconds > 86_400) return "";
+  const s = Math.max(1, Math.round(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const p = (x: number) => String(x).padStart(2, "0");
+  return h > 0 ? `${h}:${p(m)}:${p(s % 60)}` : `${m}:${p(s % 60)}`;
+}
+
 /** ISO-8601 -> "2026-11-09 14:03" (local time). */
 export function formatDate(iso: string | null): string {
   if (!iso) return "";

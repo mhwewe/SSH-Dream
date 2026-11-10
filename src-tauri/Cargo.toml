@@ -1,9 +1,5 @@
-# =============================================================================
-# Cargo.toml — Rust backend of "ssh-clone" (Tauri v2)
-# AI READER NOTE: versions below are semver RANGES because the author had no network.
-# At first build run `cargo update`, then copy the exact versions from Cargo.lock into
-# HANDOFF-LOG.md ("Pinned versions"). Handoff 2 adds russh; Handoff 3 adds russh-sftp.
-# =============================================================================
+# Rust backend of SSH Clone (Tauri v2). Built with `npm run tauri build` from the repo root.
+
 [package]
 name = "ssh-clone"
 version = "0.1.0"
@@ -34,8 +30,27 @@ russh = "0.65"
 # --- Handoff 3: SFTP client that pairs with russh (we only use its client API) + CancellationToken ---
 russh-sftp = "2"
 tokio-util = "0.7"
+# --- Drag files OUT of the window into Windows Explorer (native OLE drag; Tauri has no built-in way) ---
+tauri-plugin-drag = "2"
+# --- Open a remote file in its default Windows app and upload every save back (sftp/edit.rs) ---
+# Official Tauri plugin; we only call it from Rust (`app.opener().open_path(..)`), so no capability is needed.
+tauri-plugin-opener = "2"
+# Maintained cross-platform file watcher (ReadDirectoryChangesW on Windows): tells us when the editor saved.
+notify = "8"
 
 [target.'cfg(windows)'.dependencies]
 # Microsoft's official crate. Used ONLY for CredWriteW (rdp.rs) so the RDP password never
 # appears on a command line. If you bump this version, re-check CREDENTIALW field names.
 windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Security_Credentials"] }
+# Drag SFTP files OUT into Explorer as "virtual files" (Explorer pulls the bytes straight from the server: no temp
+# files, instant drag start). Maintained crate, Windows only. It depends on `windows` 0.62 internally; that is fine
+# next to our own 0.58 (two separate copies, we never pass types between them). See src/sftp/dragout.rs.
+virtual-file-transfer = "0.1"
+
+# Smaller and faster release build (`npm run tauri build`). Slower to compile, which only matters for release builds.
+# NOT panic = "abort": the backend relies on a panicking task not taking the whole app down.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

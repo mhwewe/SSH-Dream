@@ -13,6 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { AppError, Profile, SessionState } from "../api/types";
 import { sessionConnect, sessionDisconnect, type ConnectOverrides } from "../api/session";
+import { toast } from "./toasts";
 
 export interface ProfileSession {
   sessionId: string | null;
@@ -55,6 +56,7 @@ interface SessionsStore {
 
   openTerminal: (profile: Profile) => string | null;
   closeTab: (tabId: string) => void;
+  renameTab: (tabId: string, title: string) => void;
   setActiveTab: (profileId: string, tabId: string) => void;
   setChannel: (tabId: string, channelId: string) => void;
 }
@@ -66,6 +68,8 @@ const asAppError = (e: unknown): AppError =>
 
 let initPromise: Promise<void> | null = null;
 let tabCounter = 0;
+/** Per profile: the number given to its last terminal. Titles keep counting up ("Terminal 3" never repeats after a close). */
+const titleSeq: Record<string, number> = {};
 
 export const useSessions = create<SessionsStore>((set, get) => ({
   byProfile: {},
@@ -125,6 +129,8 @@ export const useSessions = create<SessionsStore>((set, get) => ({
           [profileId]: { sessionId: null, state: "error", lastError: err.message },
         },
       }));
+      // The red dot alone is easy to miss: say why the login failed (the Login tab shows it too).
+      toast(`Login failed: ${err.message}`, "error");
     }
   },
 
@@ -168,13 +174,13 @@ export const useSessions = create<SessionsStore>((set, get) => ({
     const ps = get().byProfile[profile.id];
     if (!ps || ps.state !== "connected" || !ps.sessionId) return null;
     const id = `tab-${++tabCounter}`;
-    const count = get().tabs.filter((t) => t.profileId === profile.id).length;
+    titleSeq[profile.id] = (titleSeq[profile.id] ?? 0) + 1;
     const tab: TermTab = {
       id,
       profileId: profile.id,
       sessionId: ps.sessionId,
       channelId: null,
-      title: `Terminal ${count + 1}`,
+      title: `Terminal ${titleSeq[profile.id]}`,
       closed: false,
       font: {
         fontFamily: profile.terminal.fontFamily,
@@ -202,6 +208,12 @@ export const useSessions = create<SessionsStore>((set, get) => ({
       }
       return { tabs: rest, activeTabByProfile: active };
     }),
+
+  renameTab: (tabId, title) => {
+    const t = title.trim();
+    if (!t) return;
+    set((s) => ({ tabs: s.tabs.map((x) => (x.id === tabId ? { ...x, title: t } : x)) }));
+  },
 
   setActiveTab: (profileId, tabId) =>
     set((s) => ({ activeTabByProfile: { ...s.activeTabByProfile, [profileId]: tabId } })),

@@ -25,7 +25,7 @@ export function RdpTab() {
   }
 
   return (
-    <div className="form">
+    <form className="form" onSubmit={(e) => { e.preventDefault(); if (!badRes) void connect(); }}>
       <h4>Remote Desktop</h4>
       <label>Host <input value={d.rdp.host ?? ""} placeholder="(same as SSH host)"
         onChange={(e) => patch((x) => { x.rdp.host = e.target.value || null; })} /></label>
@@ -56,7 +56,7 @@ export function RdpTab() {
         scaling or scrollbars. Needs Windows 8.1 / Server 2012 R2 or newer on the remote side.
         Resolution is the size the session starts with; leave it empty to use Windows' default.
       </p>
-      <div><button className="primary" disabled={badRes} onClick={() => void connect()}>Connect</button></div>
-    </div>
+      <div className="form-actions"><button type="submit" className="primary" disabled={badRes}>Connect</button></div>
+    </form>
   );
 }

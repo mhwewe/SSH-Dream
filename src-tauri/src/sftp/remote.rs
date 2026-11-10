@@ -165,6 +165,7 @@ pub async fn close(app: &AppHandle, sftp_id: &str) -> SshResult<()> {
         e
     };
     super::transfer::abort_for_sftp(app, sftp_id, "The SFTP view was closed during the transfer.");
+    super::edit::abort_for_sftp(app, sftp_id, "The SFTP view was closed.");
     if let Some(e) = entry {
         let _ = tokio::time::timeout(std::time::Duration::from_millis(500), e.sftp.close()).await;
         emit_log(app, Some(&e.session_id), "info", "SFTP channel closed.");

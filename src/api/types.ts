@@ -59,3 +59,11 @@ export interface TransferProgress {
   bytesDone: number; bytesTotal: number;
   state: "queued" | "running" | "done" | "error" | "cancelled"; error?: string;
 }
+
+/** Progress of an "Open in default app" edit session (backend: src-tauri/src/sftp/edit.rs). */
+export interface EditEvent {
+  editId: string; fileName: string; remotePath: string; localPath: string;
+  /** downloading | opened | uploading | saved | conflict (answer with sftpEditResolve) | skipped | error | stopped */
+  state: "downloading" | "opened" | "uploading" | "saved" | "conflict" | "skipped" | "error" | "stopped";
+  message?: string;
+}

@@ -5,7 +5,7 @@
 // rejections are normalized to AppError { code, message }.
 import type { Channel } from "@tauri-apps/api/core";
 import { call } from "./invoke";
-import type { FileEntry, TransferProgress } from "./types";
+import type { EditEvent, FileEntry, TransferProgress } from "./types";
 
 export type ConflictAction = "overwrite" | "skip" | "rename";
 
@@ -31,6 +31,29 @@ export const transferStart = (
   onProgress: Channel<TransferProgress>,
 ) => call<string>("transfer_start", { sftpId, direction, localPath, remotePath, onProgress });
 
+/** A fresh temp folder for files about to be dragged out into Explorer. */
+export const dragCacheDir = () => call<string>("drag_cache_dir");
+
+// ---- Drag OUT to Explorer as "virtual files" (backend: src-tauri/src/sftp/dragout.rs) -------------------------
+/** One file that will appear in Explorer. `relPath` is '/'-separated and relative to the drop folder. */
+export interface DragFile { relPath: string; remotePath: string; size: number }
+/** Step 1: flatten the dragged remote paths (folders are walked) into files. Call it when the drag BEGINS. */
+export const dragPlan = (sftpId: string, remotePaths: string[]) =>
+  call<DragFile[]>("sftp_drag_plan", { sftpId, remotePaths });
+/** Step 2: start Windows' own drag. Resolves when the drag ends. The mouse button must still be held.
+ *  `onProgress` receives the rows of the Transfers list (one per dragged item; same events as `transferStart`). */
+export const dragStart = (sftpId: string, files: DragFile[], onProgress: Channel<TransferProgress>) =>
+  call<void>("sftp_drag_start", { sftpId, files, onProgress });
+
 export const transferCancel = (transferId: string) => call<void>("transfer_cancel", { transferId });
 export const transferResolve = (transferId: string, action: ConflictAction, applyToAll: boolean) =>
   call<void>("transfer_resolve", { transferId, action, applyToAll });
+
+// ---- Open in default app (backend: src-tauri/src/sftp/edit.rs) ---------------------------------------------------
+/** Download the remote file to a temp folder, launch its default Windows app on it and upload every save back.
+ *  Resolves with the editId once the app was launched; `onEvent` keeps reporting (uploading / saved / conflict ...). */
+export const sftpEditOpen = (sftpId: string, remotePath: string, onEvent: Channel<EditEvent>) =>
+  call<string>("sftp_edit_open", { sftpId, remotePath, onEvent });
+/** Answer to an event with state "conflict": true = overwrite the server copy, false = keep it (this save is not uploaded). */
+export const sftpEditResolve = (editId: string, overwrite: boolean) =>
+  call<void>("sftp_edit_resolve", { editId, overwrite });

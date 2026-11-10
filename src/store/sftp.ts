@@ -14,12 +14,13 @@
 import { create } from "zustand";
 import { Channel } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { FileEntry, TransferProgress } from "../api/types";
+import type { EditEvent, FileEntry, TransferProgress } from "../api/types";
 import * as api from "../api/sftp";
 import { toAppError } from "../api/invoke";
 import { useSessions } from "./sessions";
 import { useSftpPrefs as usePrefs } from "./sftpPrefs";
 import { toast } from "./toasts";
+import { dialogs } from "./dialogs";
 import { baseName, joinLocal, joinRemote, parentRemote } from "../lib/paths";
 
 export interface Pane {
@@ -57,10 +58,15 @@ const emptyPane = (): Pane => ({
 });
 
 const MAX_ROWS = 500;
+/** `error` value of a drag row that Explorer never read (drop target without virtual-file support, or Esc): the row is
+ *  removed instead of showing "Cancelled". Keep in sync with `UNUSED` in src-tauri/src/sftp/dragprogress.rs. */
+const DRAG_UNUSED = "drag-unused";
 const MAX_HISTORY = 100;
 let started = false;
 const navSeq: Record<string, number> = {};
 const refreshTimers: Record<string, number> = {};
+/** Remote item -> its copy in the temp folder (see prepareDrag). */
+const dragCache = new Map<string, string>();
 
 interface SftpStore {
   panes: Record<string, Pane>;
@@ -90,6 +96,17 @@ interface SftpStore {
   /** Move remote items into another remote folder (drag & drop inside the file list). */
   move: (profileId: string, entries: FileEntry[], destDir: string) => Promise<void>;
   download: (profileId: string, entries: FileEntry[], localFolder: string) => Promise<void>;
+  /** "Open" a remote FILE: it is fetched to a temp folder, opened in its default Windows app, and every save in that
+   *  app is uploaded back to the server (backend: sftp/edit.rs). Progress / conflicts come back as toasts + a dialog. */
+  openInDefaultApp: (profileId: string, entry: FileEntry) => Promise<void>;
+  /** Download items into a temp folder so they can be dragged out into Explorer. Resolves their local paths
+   *  (null when a download failed). Items already fetched earlier (same size + date) are reused. */
+  prepareDrag: (profileId: string, entries: FileEntry[]) => Promise<string[] | null>;
+  /** Virtual-file drag-out, step 1 (see api/sftp.ts). Rejects with an AppError. */
+  planDrag: (profileId: string, entries: FileEntry[]) => Promise<api.DragFile[]>;
+  /** Virtual-file drag-out, step 2: Windows' drag loop; resolves when the drag ends. While Explorer copies, one row per
+   *  dragged item shows in the Transfers list (progress comes from the backend, like a Download). */
+  startVirtualDrag: (profileId: string, files: api.DragFile[]) => Promise<void>;
   cancel: (transferId: string) => Promise<void>;
   clearFinished: (profileId: string) => void;
   answerConflict: (action: api.ConflictAction, applyToAll: boolean) => Promise<void>;
@@ -293,6 +310,57 @@ export const useSftp = create<SftpStore>((set, get) => ({
     }
   },
 
+  async openInDefaultApp(profileId, entry) {
+    const sftpId = get().panes[profileId]?.sftpId;
+    if (!sftpId) { toast("Log in first", "error"); return; }
+    if (entry.isDir) return;
+    const ch = new Channel<EditEvent>();
+    ch.onmessage = (ev) => { void handleEditEvent(ev); };
+    try { await api.sftpEditOpen(sftpId, entry.path, ch); }
+    catch (e) { toast(`${entry.name}: ${toAppError(e).message}`, "error"); }
+  },
+
+  planDrag(profileId, entries) {
+    const sftpId = get().panes[profileId]?.sftpId;
+    if (!sftpId) return Promise.reject({ code: "not_found", message: "This SFTP view is not open (log in again)." });
+    return api.dragPlan(sftpId, entries.map((e) => e.path));
+  },
+
+  async startVirtualDrag(profileId, files) {
+    const sftpId = get().panes[profileId]?.sftpId;
+    if (!sftpId) throw { code: "not_found", message: "This SFTP view is not open (log in again)." };
+    const ch = new Channel<TransferProgress>();
+    ch.onmessage = (p) => {
+      if (p.state === "cancelled" && p.error === DRAG_UNUSED) {
+        // Nothing was copied (the drag ended somewhere that does not read virtual files): drop the row quietly.
+        useSftp.setState((s) => ({ transfers: s.transfers.filter((t) => t.transferId !== p.transferId) }));
+        return;
+      }
+      applyProgress(profileId, p);
+    };
+    await api.dragStart(sftpId, files, ch);
+  },
+
+  async prepareDrag(profileId, entries) {
+    const pane = get().panes[profileId];
+    if (!pane?.sftpId) return null;
+    const sftpId = pane.sftpId;
+    const out: string[] = [];
+    let dir: string | null = null;
+    for (const en of entries) {
+      const key = `${sftpId}|${en.path}|${en.size}|${en.modified ?? ""}`;
+      const hit = dragCache.get(key);
+      if (hit) { out.push(hit); continue; }
+      try { dir ??= await api.dragCacheDir(); }
+      catch (e) { toast(toAppError(e).message, "error"); return null; }
+      const local = joinLocal(dir, en.name);
+      if (!(await transferAndWait(profileId, sftpId, local, en.path))) return null;
+      dragCache.set(key, local);
+      out.push(local);
+    }
+    return out;
+  },
+
   async cancel(transferId) {
     try { await api.transferCancel(transferId); } catch (e) { toast(toAppError(e).message, "error"); }
   },
@@ -352,6 +420,22 @@ async function startTransfer(
   }
 }
 
+/** One download that resolves when it is finished (true = done). It also shows up in the Transfers list. */
+function transferAndWait(profileId: string, sftpId: string, localPath: string, remotePath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const ch = new Channel<TransferProgress>();
+    ch.onmessage = (p) => {
+      applyProgress(profileId, p);
+      if (p.state === "done") resolve(true);
+      else if (p.state === "error" || p.state === "cancelled") resolve(false);
+    };
+    api.transferStart(sftpId, "download", localPath, remotePath, ch).catch((e) => {
+      toast(toAppError(e).message, "error");
+      resolve(false);
+    });
+  });
+}
+
 function applyProgress(profileId: string, p: TransferProgress) {
   const now = performance.now();
   const finished = p.state === "done" || p.state === "error" || p.state === "cancelled";
@@ -390,5 +474,31 @@ function applyProgress(profileId: string, p: TransferProgress) {
   if (p.state === "done" && p.direction === "upload") {
     window.clearTimeout(refreshTimers[profileId]);
     refreshTimers[profileId] = window.setTimeout(() => void useSftp.getState().refresh(profileId), 400);
+  }
+}
+
+// ---- "Open in default app": reacting to the backend's edit events (src-tauri/src/sftp/edit.rs) -------------------------
+// Every state becomes a toast; "conflict" (the server copy changed while the file was open) asks the user and answers the backend.
+async function handleEditEvent(ev: EditEvent) {
+  const name = ev.fileName;
+  switch (ev.state) {
+    case "downloading": toast(`Opening "${name}"…`); break;
+    case "opened": toast(ev.message ?? `Opened "${name}". Saving it in the app uploads it to the server.`); break;
+    case "uploading": break; // too short-lived for a toast; the Log pane has the outcome
+    case "saved": toast(`Saved "${name}" to the server`, "success"); break;
+    case "skipped": toast(ev.message ?? `"${name}": not uploaded`); break;
+    case "stopped": toast(`"${name}": ${ev.message ?? "stopped watching for saves"}`); break;
+    case "error": toast(`"${name}": ${ev.message ?? "something went wrong"}`, "error"); break;
+    case "conflict": {
+      // The overwrite button is the dangerous one (Dialogs.tsx): focus + Esc land on "Keep server copy".
+      const pick = await dialogs.choose(
+        "File changed on the server",
+        `${ev.message ?? `"${name}" was changed on the server.`} Overwrite the server copy with your edited version, or keep the server copy and not upload this save?`,
+        ["Overwrite server copy", "Keep server copy"],
+      );
+      try { await api.sftpEditResolve(ev.editId, pick === "Overwrite server copy"); }
+      catch (e) { toast(toAppError(e).message, "error"); }
+      break;
+    }
   }
 }

@@ -1,7 +1,7 @@
 // store/sftpPrefs.ts — what the SFTP tab remembers between app runs, per profile:
 //   * lastPath   — the last folder that was open (restored when the SFTP view opens)
 //   * bookmarks  — the user's bookmarked folders
-// plus one global flag: whether the bookmarks panel is shown.
+// plus two global flags: whether the bookmarks panel is shown, and whether hidden (dot) files are listed.
 // Persisted through api/prefs.ts into <app_data>/sftp_prefs.json (written ~0.4 s after the last change).
 // Used by: store/sftp.ts (lastPath), tabs/SftpTab.tsx (bookmarks).
 import { create } from "zustand";
@@ -17,6 +17,8 @@ const empty = (): ProfilePrefs => ({ lastPath: "", bookmarks: [] });
 interface PrefsStore {
   loaded: boolean;
   panelOpen: boolean;
+  /** Show entries whose name starts with "." (default: yes, like the old behaviour). */
+  showHidden: boolean;
   profiles: Record<string, ProfilePrefs>;
 
   /** Idempotent: loads the file once; later calls return the same promise. */
@@ -29,13 +31,14 @@ interface PrefsStore {
   removeBookmark: (profileId: string, path: string) => void;
   renameBookmark: (profileId: string, path: string, name: string) => void;
   setPanelOpen: (open: boolean) => void;
+  setShowHidden: (show: boolean) => void;
 }
 
 let loading: Promise<void> | null = null;
 let saveTimer: number | undefined;
 
 /** Defensive parse: the file is user-editable, so never trust its shape. */
-function parse(raw: Record<string, unknown>): { panelOpen: boolean; profiles: Record<string, ProfilePrefs> } {
+function parse(raw: Record<string, unknown>): { panelOpen: boolean; showHidden: boolean; profiles: Record<string, ProfilePrefs> } {
   const out: Record<string, ProfilePrefs> = {};
   const src = (raw.profiles && typeof raw.profiles === "object" ? raw.profiles : {}) as Record<string, unknown>;
   for (const [id, v] of Object.entries(src)) {
@@ -51,7 +54,7 @@ function parse(raw: Record<string, unknown>): { panelOpen: boolean; profiles: Re
     }
     out[id] = { lastPath: typeof o.lastPath === "string" ? o.lastPath : "", bookmarks: bookmarks.slice(0, MAX_BOOKMARKS) };
   }
-  return { panelOpen: raw.panelOpen !== false, profiles: out };
+  return { panelOpen: raw.panelOpen !== false, showHidden: raw.showHidden !== false, profiles: out };
 }
 
 /** "/srv/www" -> "www";  "/" -> "/". */
@@ -62,8 +65,8 @@ export const useSftpPrefs = create<PrefsStore>((set, get) => {
     if (!get().loaded) return; // the file was not read yet: writing now would wipe it
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
-      const { profiles, panelOpen } = get();
-      void sftpPrefsSet({ version: 1, panelOpen, profiles }).catch(() => { /* non-fatal: memory only this run */ });
+      const { profiles, panelOpen, showHidden } = get();
+      void sftpPrefsSet({ version: 1, panelOpen, showHidden, profiles }).catch(() => { /* non-fatal: memory only this run */ });
     }, 400);
   }
   function patch(profileId: string, fn: (p: ProfilePrefs) => ProfilePrefs) {
@@ -74,6 +77,7 @@ export const useSftpPrefs = create<PrefsStore>((set, get) => {
   return {
     loaded: false,
     panelOpen: true,
+    showHidden: true,
     profiles: {},
 
     load() {
@@ -81,7 +85,7 @@ export const useSftpPrefs = create<PrefsStore>((set, get) => {
         loading = (async () => {
           try {
             const p = parse(await sftpPrefsGet());
-            set({ profiles: p.profiles, panelOpen: p.panelOpen });
+            set({ profiles: p.profiles, panelOpen: p.panelOpen, showHidden: p.showHidden });
           } catch { /* unreadable: start empty */ }
           set({ loaded: true });
         })();
@@ -113,5 +117,6 @@ export const useSftpPrefs = create<PrefsStore>((set, get) => {
       patch(profileId, (p) => ({ ...p, bookmarks: p.bookmarks.map((b) => (b.path === path ? { ...b, name: nn } : b)) }));
     },
     setPanelOpen(open) { set({ panelOpen: open }); schedulePersist(); },
+    setShowHidden(show) { set({ showHidden: show }); schedulePersist(); },
   };
 });
